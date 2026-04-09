@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+/* ── Variables ── */
+:root {
+  --bg:         #0a0a0c;
+  --surface:    rgba(17, 17, 21, 0.8); /* Ajustado para transparencia */
+  --surface2:   rgba(24, 24, 31, 0.6); /* Ajustado para transparencia */
+  --border:     rgba(42, 42, 56, 0.5); /* Bordes más sutiles */
+  --accent:     #e8ff00;
+  --accent2:    #ff4466;
+  --accent3:    #00ccff;
+  --text:       #c8c8d8;
+  --text-dim:   #75758a; /* Un poco más legible */
+  --pad-off:    rgba(26, 26, 36, 0.4);
+  --pad-on:     #e8ff00;
+  --pad-cur:    #ffffff;
+  --font-mono:  'Share Tech Mono', monospace;
+  --font-head:  'Orbitron', sans-serif;
+  --radius:     3px;
+  --track-h:    48px; /* Un poco más de aire */
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Canvas del Caleidoscopio */
+#visualizer {
+  position: fixed;
+  inset: 0;
+  z-index: 0; /* Al fondo */
+  pointer-events: none;
+}
+
+/* Scanline overlay (Modificado para no matar el brillo del visualizer) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.1) 2px,
+    rgba(0,0,0,0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ── App Container (Sobre el visualizer) ── */
+#app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  backdrop-filter: blur(4px); /* Cristal esmerilado suave */
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.4rem;
+  color: var(--text);
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 10px rgba(232, 255, 0, 0.3);
+}
+.logo span { color: var(--accent); }
+
+/* ── Transport ── */
+.transport { display: flex; gap: 0.5rem; }
+
+.btn-transport, .btn-ghost {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+}
+
+.btn-transport.play:hover, .btn-transport.play.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent);
+}
+
+/* ── BPM ── */
+.bpm-control { margin-left: auto; gap: 1rem; }
+#bpm-input {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1rem;
+  width: 3.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+/* ── Grid ── */
+.grid-container {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+#tracks-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Más espacio entre pistas */
+}
+
+.track-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 200px;
+  align-items: center;
+  height: var(--track-h);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius);
+  padding: 0 10px;
+}
+.step-numbers {
+  display: flex;
+  /* El margen izquierdo debe ser IGUAL al ancho de .track-label (100px aprox) */
+  margin-left: 100px;
+  margin-right: 200px; 
+  padding: 0 10px;
+  margin-bottom: 10px;
+}
+
+.step-num {
+  flex: 1; /* Esto hace que cada número ocupe el mismo ancho que un pad */
+  text-align: center;
+  font-family: var(--font-head);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  opacity: 0.8;
+}
+/* ── Pads ── */
+.pads {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 4px;
+  padding: 0 10px;
+}
+/* Esto oscurece toda la fila, incluyendo los pads, cuando está en mute */
+.track-row.track-muted {
+  opacity: 0.25;      /* Oscurece la fila */
+  filter: grayscale(1); /* Opcional: quita el color para reforzar el efecto */
+  pointer-events: none; /* Evita editar los pads mientras esté muteado */
+}
+
+/* Permitimos que el botón de mute siga funcionando aunque la fila esté bloqueada */
+.track-row.track-muted .track-label {
+  pointer-events: auto;
+}
+.step-pad {
+  height: 36px;
+  background: var(--pad-off);
+  border: 1px solid var(--border);
+  transition: all 0.1s ease;
+}
+
+.step-pad.beat-start {
+  border-left: 2px solid var(--text-dim);
+}
+
+.step-pad.on {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.step-pad.current {
+  background: var(--pad-cur) !important;
+  box-shadow: 0 0 15px #fff;
+  transform: scaleY(1.1);
+}
+/* --- Contenedor de Acciones --- */
+.track-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem; /* Más aire entre botones */
+  padding-left: 1.2rem;
+  justify-content: flex-end;
+}
+
+/* --- El Selector de Presets --- */
+.preset-select {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  background: var(--surface2);
+  color: var(--accent); /* Texto en color acento */
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  outline: none;
+  width: 90px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.preset-select:hover {
+  border-color: var(--accent3);
+  box-shadow: 0 0 8px rgba(0, 204, 255, 0.2);
+}
+
+/* --- Botones Circulares (Preview, Rand, Clear) --- */
+.btn-preview, .btn-rand, .btn-clr {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  width: 28px;  /* Un poco más grandes para que sean cómodos */
+  height: 28px;
+  border-radius: 4px; /* Un toque menos circular, más técnico */
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Estados Hover específicos por función */
+.btn-preview:hover { 
+  border-color: var(--accent3); 
+  color: var(--accent3); 
+  box-shadow: 0 0 10px var(--accent3);
+}
+
+.btn-rand:hover { 
+  border-color: var(--accent); 
+  color: var(--accent); 
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.btn-clr:hover { 
+  border-color: var(--accent2); 
+  color: var(--accent2); 
+  box-shadow: 0 0 10px var(--accent2);
+}
+
+/* Efecto de clic (feedback táctil) */
+.btn-preview:active, .btn-rand:active, .btn-clr:active {
+  transform: scale(0.9);
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: auto;
+  padding: 1rem 2rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--accent); }
