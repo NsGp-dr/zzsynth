@@ -1,8 +1,6 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    port: 5173,
-    open: true,
-  }
+  // Esto hace que las rutas sean relativas y funcionen en la subcarpeta de GitHub
+  base: './', 
 })
